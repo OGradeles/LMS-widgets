@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Quiz Recorder</title>
+    <style>
+        /* ... Previous styles remain the same ... */
+        .error-message {
+            background-color: #fff5f5;
+            border: 1px solid #feb2b2;
+            color: #c53030;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .browser-warning {
+            background-color: #fffaf0;
+            border: 1px solid #feebc8;
+            color: #c05621;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="browserWarning" class="browser-warning">
+            Please use Google Chrome for the best experience. Speech recognition may not work in other browsers.
+        </div>
+        <div id="errorMessage" class="error-message"></div>
+        
+        <div class="content-wrapper">
+            <!-- ... Previous HTML remains the same ... -->
+        </div>
+    </div>
+
+    <script>
+        const errorMessage = document.getElementById('errorMessage');
+        const browserWarning = document.getElementById('browserWarning');
+
+        // Check if browser supports required APIs
+        function checkBrowserSupport() {
+            if (!window.navigator.mediaDevices || !window.navigator.mediaDevices.getUserMedia) {
+                showError("Your browser doesn't support audio recording. Please try Google Chrome.");
+                return false;
+            }
+            
+            if (!('webkitSpeechRecognition' in window)) {
+                browserWarning.style.display = 'block';
+            }
+            
+            return true;
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+            setTimeout(() => {
+                errorMessage.style.display = 'none';
+            }, 5000);
+        }
+
+        const startRecording = async () => {
+            try {
+                // Clear any previous errors
+                errorMessage.style.display = 'none';
+
+                // Check browser support first
+                if (!checkBrowserSupport()) {
+                    return;
+                }
+
+                // Request microphone permission
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                // Set up speech recognition
+                if ('webkitSpeechRecognition' in window) {
+                    recognition = new webkitSpeechRecognition();
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    
+                    recognition.onstart = () => {
+                        console.log('Speech recognition started');
+                    };
+
+                    recognition.onerror = (event) => {
+                        showError('Speech recognition error: ' + event.error);
+                    };
+                    
+                    recognition.onend = () => {
+                        console.log('Speech recognition ended');
+                    };
+                    
+                    recognition.onresult = (event) => {
+                        const transcript = Array.from(event.results)
+                            .map(result => result[0].transcript)
+                            .join('');
+                        
+                        console.log('Transcript:', transcript);
+                        transcriptText.textContent = transcript;
+                        transcriptBox.classList.add('visible');
+                    };
+                    
+                    try {
+                        recognition.start();
+                    } catch (err) {
+                        showError('Error starting speech recognition: ' + err.message);
+                    }
+                } else {
+                    showError('Speech recognition is not supported in this browser. Please use Chrome.');
+                }
+                
+                // Start recording
+                mediaRecorder.ondataavailable = (event) => {
+                    console.log('Recording data available');
+                };
+
+                mediaRecorder.onstart = () => {
+                    console.log('Recording started');
+                    isRecording = true;
+                    updateStatus('recording');
+                    recordButton.classList.add('recording');
+                    recordButton.innerHTML = `
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="6" y="6" width="12" height="12"></rect>
+                        </svg>
+                    `;
+                };
+
+                mediaRecorder.onerror = (event) => {
+                    showError('Recording error: ' + event.error);
+                };
+
+                mediaRecorder.start();
+                
+            } catch (err) {
+                console.error('Error:', err);
+                showError(err.message || 'Error accessing microphone. Please ensure you have granted microphone permissions.');
+                updateStatus('idle');
+            }
+        };
+
+        // ... Rest of the code remains the same ...
+
+        // Initial browser support check
+        checkBrowserSupport();
+    </script>
+</body>
+</html>
